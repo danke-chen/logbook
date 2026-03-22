@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LOGBOOK</title>
+    <style>
+        :root {
+            --bg: #FFFFFF;
+            --fg: #000000;
+            --border: #E5E5E5;
+            --accent: #FF7A00;
+            --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        .meta-text {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* ── VIEWS ── */
+        .view { display: none; min-height: 100dvh; flex-direction: column; }
+        .view.active { display: flex; }
+
+        /* ── HEADER ── */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 10;
+        }
+        header button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            padding: 0;
+        }
+
+        /* ── COMPOSE VIEW ── */
+        .compose-section {
+            padding: 1.5rem;
+            padding-top: 3rem;
+            border-bottom: 1px solid var(--border);
+            flex-direction: column;
+            gap: 1.5rem;
+            display: flex;
+        }
+
+        .date-display {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .date-display .day {
+            font-size: clamp(4rem, 20vw, 6rem);
+            font-weight: 500;
+            line-height: 0.8;
+            letter-spacing: -0.05em;
+        }
+        .date-display .details {
+            display: flex;
+            flex-direction: column;
+            padding-top: 0.3rem;
+            gap: 0.1rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            background: transparent;
+            border: none;
+            resize: none;
+            color: var(--fg);
+            font-family: var(--font-sans);
+            font-size: 1.4rem;
+            line-height: 1.25;
+            letter-spacing: -0.02em;
+            outline: none;
+            margin-top: 1rem;
+        }
+        textarea::placeholder { color: #CCC; }
+
+        .mood-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .mood-options { display: flex; gap: 1rem; }
+        .mood-btn {
+            background: none;
+            border: none;
+            font-family: var(--font-sans);
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            position: relative;
+            padding-bottom: 2px;
+            color: #999;
+        }
+        .mood-btn.active { color: var(--fg); }
+        .mood-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 1px;
+            background: var(--fg);
+        }
+
+        /* Title input */
+        .title-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            color: var(--fg);
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            outline: none;
+        }
+        .title-input::placeholder { color: #CCC; font-weight: 600; }
+
+        /* ── ACTIONS BAR ── */
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .btn-primary {
+            background: var(--fg);
+            color: var(--bg);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: opacity 0.15s;
+        }
+        .btn-primary:active { opacity: 0.75; }
+        .btn-primary:disabled { opacity: 0.3; cursor: default; }
+
+        /* ── ARCHIVE VIEW ── */
+        .archive-section { flex-grow: 1; }
+        .section-header {
+            padding: 1.5rem;
+            border-bottom: 2px solid var(--fg);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .section-header .logbook-title {
+            font-size: 2rem;
+            font-weight: 500;
+            letter-spacing: -0.04em;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        .entry-row {
+            display: grid;
+            grid-template-columns: 2.5rem 1fr 1.5rem;
+            gap: 1rem;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .entry-row:active { background: #FAFAFA; }
+
+        .entry-index { color: #999; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 0.15rem; }
+        .entry-content { display: flex; flex-direction: column; gap: 0.25rem; }
+        .entry-title { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; text-transform: uppercase; line-height: 1.2; }
+        .entry-meta { color: #999; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 0.1rem; }
+        .entry-snippet { font-size: 0.85rem; line-height: 1.4; letter-spacing: -0.01em; color: #555; margin-top: 0.25rem;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .entry-mood-indicator {
+            width: 8px; height: 8px;
+            background: #E0E0E0;
+            justify-self: center;
+            margin-top: 0.3rem;
+        }
+        .mood-peak { background: var(--accent); }
+        .mood-base { background: var(--fg); }
+        .mood-trough { background: #999; }
+
+        /* ── DETAIL VIEW ── */
+        .detail-view { background: var(--bg); }
+        .detail-body { padding: 1.5rem; flex-grow: 1; overflow-y: auto; }
+        .detail-date-display {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        .detail-date-display .day { font-size: clamp(3.5rem, 18vw, 5rem); font-weight: 500; line-height: 0.8; letter-spacing: -0.05em; }
+        .detail-date-display .details { display: flex; flex-direction: column; padding-top: 0.3rem; gap: 0.1rem; }
+        .detail-title { font-size: 1.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 1.5rem; }
+        .detail-text { font-size: 1rem; line-height: 1.6; letter-spacing: -0.01em; white-space: pre-wrap; }
+        .detail-mood-tag {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.4rem 0.75rem;
+            border: 1px solid var(--border);
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Delete button */
+        .btn-delete {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #999;
+            padding: 0;
+        }
+        .btn-delete:active { color: #000; }
+
+        /* Empty state */
+        .empty-state {
+            padding: 4rem 1.5rem;
+            text-align: center;
+            color: #CCC;
+        }
+        .empty-state .big { font-size: 3rem; font-weight: 500; letter-spacing: -0.04em; text-transform: uppercase; margin-bottom: 0.5rem; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--fg);
+            color: var(--bg);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        .word-count { display: flex; flex-direction: column; justify-content: center; }
+        .word-count span { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #999; }
+    </style>
+</head>
+<body>
+
+<!-- VIEW: COMPOSE -->
+<div class="view active" id="view-compose">
+    <header>
+        <span class="meta-text">PERSONAL ARCHIVE</span>
+        <button class="meta-text" onclick="switchView('archive')">LOGBOOK →</button>
+    </header>
+
+    <section class="compose-section">
+        <div class="date-display">
+            <div class="day" id="current-day">—</div>
+            <div class="details">
+                <span class="meta-text" id="current-month">—</span>
+                <span class="meta-text" style="color:#888" id="current-weekday">—</span>
+                <span class="meta-text" style="color:#888; margin-top:0.5rem" id="current-time">—</span>
+            </div>
+        </div>
+
+        <input class="title-input" id="entry-title" type="text" placeholder="TITLE (OPTIONAL)" autocomplete="off" spellcheck="false">
+
+        <div>
+            <textarea id="entry-text" placeholder="RECORD CURRENT STATE..."></textarea>
+        </div>
+
+        <div class="mood-selector">
+            <span class="meta-text" style="width:60px; color:#888">STATE:</span>
+            <div class="mood-options">
+                <button class="mood-btn" data-mood="peak">PEAK</button>
+                <button class="mood-btn active" data-mood="base">BASE</button>
+                <button class="mood-btn" data-mood="trough">TROUGH</button>
+            </div>
+        </div>
+    </section>
+
+    <div class="actions-bar">
+        <div class="word-count">
+            <span id="word-count-display">WORDS: 0</span>
+            <span id="char-count-display">CHARS: 0</span>
+        </div>
+        <button class="btn-primary" id="commit-btn" onclick="commitEntry()">COMMIT ENTRY</button>
+    </div>
+</div>
+
+<!-- VIEW: ARCHIVE -->
+<div class="view" id="view-archive">
+    <header>
+        <button class="meta-text" onclick="switchView('compose')">← NEW ENTRY</button>
+        <span class="meta-text" id="header-count">0 ENTRIES</span>
+    </header>
+
+    <section class="archive-section">
+        <div class="section-header">
+            <span class="logbook-title">LOGBOOK.</span>
+            <span class="meta-text" id="archive-count" style="color:#888">0 ENTRIES</span>
+        </div>
+        <div id="entries-list"></div>
+    </section>
+</div>
+
+<!-- VIEW: DETAIL -->
+<div class="view" id="view-detail">
+    <header>
+        <button class="meta-text" onclick="switchView('archive')">← BACK</button>
+        <button class="btn-delete" id="delete-btn">DELETE</button>
+    </header>
+
+    <div class="detail-body">
+        <div class="detail-date-display">
+            <div class="day" id="detail-day">—</div>
+            <div class="details">
+                <span class="meta-text" id="detail-month">—</span>
+                <span class="meta-text" style="color:#888" id="detail-weekday">—</span>
+                <span class="meta-text" style="color:#888; margin-top:0.5rem" id="detail-time">—</span>
+            </div>
+        </div>
+        <div class="detail-title" id="detail-title"></div>
+        <div class="detail-text" id="detail-text"></div>
+        <div class="detail-mood-tag" id="detail-mood"></div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const STORAGE_KEY = 'logbook_entries_v2';
+
+function loadEntries() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+}
+
+function saveEntries(entries) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+let entries = loadEntries();
+let currentDetailId = null;
+
+// ── DATE HELPERS ──────────────────────────────────────
+const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+const WEEKDAYS = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+
+function formatTime(d) {
+    let h = d.getHours(), m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('current-day').textContent = String(now.getDate()).padStart(2,'0');
+    document.getElementById('current-month').textContent = MONTHS[now.getMonth()];
+    document.getElementById('current-weekday').textContent = WEEKDAYS[now.getDay()];
+    document.getElementById('current-time').textContent = formatTime(now);
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── MOOD ──────────────────────────────────────────────
+let selectedMood = 'base';
+document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+        e.preventDefault();
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedMood = btn.dataset.mood;
+    });
+});
+
+// ── WORD COUNT ────────────────────────────────────────
+const textarea = document.getElementById('entry-text');
+textarea.addEventListener('input', () => {
+    const text = textarea.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    document.getElementById('word-count-display').textContent = `WORDS: ${words}`;
+    document.getElementById('char-count-display').textContent = `CHARS: ${textarea.value.length}`;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+});
+
+// ── COMMIT ────────────────────────────────────────────
+function commitEntry() {
+    const text = textarea.value.trim();
+    if (!text) { showToast('ENTER SOME TEXT FIRST'); return; }
+
+    const now = new Date();
+    const rawTitle = document.getElementById('entry-title').value.trim();
+    const autoTitle = text.split(' ').slice(0, 4).join(' ').toUpperCase();
+
+    const entry = {
+        id: Date.now(),
+        timestamp: now.toISOString(),
+        day: String(now.getDate()).padStart(2,'0'),
+        month: MONTHS[now.getMonth()],
+        weekday: WEEKDAYS[now.getDay()],
+        time: formatTime(now),
+        title: rawTitle || autoTitle,
+        text: text,
+        mood: selectedMood
+    };
+
+    entries.unshift(entry);
+    saveEntries(entries);
+
+    // Reset
+    textarea.value = '';
+    textarea.style.height = 'auto';
+    document.getElementById('entry-title').value = '';
+    document.getElementById('word-count-display').textContent = 'WORDS: 0';
+    document.getElementById('char-count-display').textContent = 'CHARS: 0';
+    selectedMood = 'base';
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-mood="base"]').classList.add('active');
+
+    showToast('ENTRY COMMITTED');
+    renderArchive();
+}
+
+// ── RENDER ARCHIVE ────────────────────────────────────
+function renderArchive() {
+    const list = document.getElementById('entries-list');
+    const count = entries.length;
+    document.getElementById('archive-count').textContent = `${count} ENTRIES`;
+    document.getElementById('header-count').textContent = `${count} ENTRIES`;
+
+    if (count === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="big">EMPTY.</div><span class="meta-text" style="color:#CCC">NO ENTRIES YET</span></div>`;
+        return;
+    }
+
+    list.innerHTML = entries.map((e, i) => `
+        <div class="entry-row" onclick="openDetail(${e.id})">
+            <div class="meta-text entry-index">${String(count - i).padStart(2,'0')}</div>
+            <div class="entry-content">
+                <div class="entry-title">${escHtml(e.title)}</div>
+                <div class="entry-meta">${e.day} ${e.month} · ${e.time}</div>
+                <div class="body-text entry-snippet">${escHtml(e.text)}</div>
+            </div>
+            <div class="entry-mood-indicator mood-${e.mood}"></div>
+        </div>
+    `).join('');
+}
+
+// ── DETAIL ────────────────────────────────────────────
+function openDetail(id) {
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+    currentDetailId = id;
+
+    document.getElementById('detail-day').textContent = e.day;
+    document.getElementById('detail-month').textContent = e.month;
+    document.getElementById('detail-weekday').textContent = e.weekday;
+    document.getElementById('detail-time').textContent = e.time;
+    document.getElementById('detail-title').textContent = e.title;
+    document.getElementById('detail-text').textContent = e.text;
+    document.getElementById('detail-mood').textContent = `STATE: ${e.mood.toUpperCase()}`;
+
+    switchView('detail');
+}
+
+document.getElementById('delete-btn').addEventListener('click', () => {
+    if (!currentDetailId) return;
+    if (!confirm('DELETE THIS ENTRY?')) return;
+    entries = entries.filter(x => x.id !== currentDetailId);
+    saveEntries(entries);
+    renderArchive();
+    showToast('ENTRY DELETED');
+    switchView('archive');
+});
+
+// ── NAVIGATION ────────────────────────────────────────
+function switchView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${name}`).classList.add('active');
+    window.scrollTo(0, 0);
+    if (name === 'archive') renderArchive();
+}
+
+// ── TOAST ─────────────────────────────────────────────
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── UTILS ─────────────────────────────────────────────
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INIT ──────────────────────────────────────────────
+renderArchive();
+</script>
+</body>
+</html>
