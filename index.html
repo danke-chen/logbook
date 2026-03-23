@@ -603,6 +603,8 @@ document.getElementById('entries-list').innerHTML = `<div class="empty-state"><d
 loadEntries().then(data => {
     entries = data;
     renderArchive();
+}).catch(e => {
+    document.getElementById('entries-list').innerHTML = `<div class="empty-state"><div class="big" style="font-size:1rem;color:#999">${e.message}</div></div>`;
 });
 </script>
 </body>
