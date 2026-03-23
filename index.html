@@ -287,8 +287,8 @@
 </head>
 <body>
 
-<!-- VIEW: COMPOSE -->
-<div class="view active" id="view-compose">
+<!-- VIEW: COMPOSE (private) -->
+<div class="view" id="view-compose">
     <header>
         <span class="meta-text">PERSONAL ARCHIVE</span>
         <button class="meta-text" onclick="switchView('archive')">LOGBOOK →</button>
@@ -329,16 +329,16 @@
     </div>
 </div>
 
-<!-- VIEW: ARCHIVE -->
-<div class="view" id="view-archive">
+<!-- VIEW: ARCHIVE (public, read-only) -->
+<div class="view active" id="view-archive">
     <header>
-        <button class="meta-text" onclick="switchView('compose')">← NEW ENTRY</button>
-        <span class="meta-text" id="header-count">0 ENTRIES</span>
+        <span class="meta-text">PERSONAL ARCHIVE</span>
+        <span class="meta-text" id="header-count" style="color:#888">0 ENTRIES</span>
     </header>
 
     <section class="archive-section">
         <div class="section-header">
-            <span class="logbook-title">LOGBOOK.</span>
+            <span class="logbook-title" id="logbook-title-tap">LOGBOOK.</span>
             <span class="meta-text" id="archive-count" style="color:#888">0 ENTRIES</span>
         </div>
         <div id="entries-list"></div>
@@ -375,12 +375,22 @@
 const STORAGE_KEY = 'logbook_entries_v2';
 
 function loadEntries() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch(e) {
+        console.warn('load error', e);
+        return [];
+    }
 }
 
 function saveEntries(entries) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } catch(e) {
+        console.warn('save error', e);
+        // fallback: keep in memory only
+    }
 }
 
 let entries = loadEntries();
@@ -434,6 +444,7 @@ textarea.addEventListener('input', () => {
 function commitEntry() {
     const text = textarea.value.trim();
     if (!text) { showToast('ENTER SOME TEXT FIRST'); return; }
+    console.log('committing entry...');
 
     const now = new Date();
     const rawTitle = document.getElementById('entry-title').value.trim();
@@ -540,6 +551,18 @@ function showToast(msg) {
 function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── SECRET ENTRY: triple-tap on "LOGBOOK." ────────────
+let tapCount = 0, tapTimer = null;
+document.getElementById('logbook-title-tap').addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => tapCount = 0, 600);
+    if (tapCount >= 3) {
+        tapCount = 0;
+        switchView('compose');
+    }
+});
 
 // ── INIT ──────────────────────────────────────────────
 renderArchive();
