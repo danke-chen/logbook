@@ -168,6 +168,21 @@
         .btn-primary:active { opacity: 0.75; }
         .btn-primary:disabled { opacity: 0.3; cursor: default; }
 
+        /* ── COVER IMAGE ── */
+        .cover-image {
+            width: 100%;
+            height: 56vw;
+            max-height: 320px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .cover-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
         /* ── ARCHIVE VIEW ── */
         .archive-section { flex-grow: 1; }
         .section-header {
@@ -287,8 +302,8 @@
 </head>
 <body>
 
-<!-- VIEW: COMPOSE -->
-<div class="view active" id="view-compose">
+<!-- VIEW: COMPOSE (private) -->
+<div class="view" id="view-compose">
     <header>
         <span class="meta-text">PERSONAL ARCHIVE</span>
         <button class="meta-text" onclick="switchView('archive')">LOGBOOK →</button>
@@ -329,16 +344,15 @@
     </div>
 </div>
 
-<!-- VIEW: ARCHIVE -->
-<div class="view" id="view-archive">
-    <header>
-        <button class="meta-text" onclick="switchView('compose')">← NEW ENTRY</button>
-        <span class="meta-text" id="header-count">0 ENTRIES</span>
-    </header>
+<!-- VIEW: ARCHIVE (public, read-only) -->
+<div class="view active" id="view-archive">
+    <div class="cover-image">
+        <img src="https://danke-chen.github.io/logbook/cover1.jpg" alt="cover">
+    </div>
 
     <section class="archive-section">
         <div class="section-header">
-            <span class="logbook-title">LOGBOOK.</span>
+            <span class="logbook-title" id="logbook-title-tap">LOGBOOK.</span>
             <span class="meta-text" id="archive-count" style="color:#888">0 ENTRIES</span>
         </div>
         <div id="entries-list"></div>
@@ -371,19 +385,48 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────
-const STORAGE_KEY = 'logbook_entries_v2';
+// ── SUPABASE CONFIG ───────────────────────────────────
+const SUPA_URL = 'https://ltaetmpsqsnzjpldyplk.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0YWV0bXBzcXNuempwbGR5cGxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTI1MDYsImV4cCI6MjA4OTc4ODUwNn0.87ri7jHwiXJoeXrobOJABCdprPu-9WC5iQlvVUVNru8';
 
-function loadEntries() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+async function dbFetch(path, options = {}) {
+    const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
+        headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': `Bearer ${SUPA_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+            ...options.headers
+        },
+        ...options
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
 }
 
-function saveEntries(entries) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+async function loadEntries() {
+    try {
+        return await dbFetch('entries?order=id.desc');
+    } catch(e) {
+        console.warn('load error', e);
+        return [];
+    }
 }
 
-let entries = loadEntries();
+async function saveEntry(entry) {
+    return await dbFetch('entries', {
+        method: 'POST',
+        body: JSON.stringify(entry)
+    });
+}
+
+async function deleteEntry(id) {
+    await dbFetch(`entries?id=eq.${id}`, { method: 'DELETE' });
+}
+
+// ── STATE ─────────────────────────────────────────────
+let entries = [];
 let currentDetailId = null;
 
 // ── DATE HELPERS ──────────────────────────────────────
@@ -404,7 +447,6 @@ function updateClock() {
     document.getElementById('current-weekday').textContent = WEEKDAYS[now.getDay()];
     document.getElementById('current-time').textContent = formatTime(now);
 }
-
 updateClock();
 setInterval(updateClock, 1000);
 
@@ -431,41 +473,45 @@ textarea.addEventListener('input', () => {
 });
 
 // ── COMMIT ────────────────────────────────────────────
-function commitEntry() {
+async function commitEntry() {
     const text = textarea.value.trim();
     if (!text) { showToast('ENTER SOME TEXT FIRST'); return; }
 
+    const btn = document.getElementById('commit-btn');
+    btn.disabled = true;
+    showToast('SAVING...');
+
     const now = new Date();
     const rawTitle = document.getElementById('entry-title').value.trim();
-    const autoTitle = text.split(' ').slice(0, 4).join(' ').toUpperCase();
-
     const entry = {
-        id: Date.now(),
         timestamp: now.toISOString(),
         day: String(now.getDate()).padStart(2,'0'),
         month: MONTHS[now.getMonth()],
         weekday: WEEKDAYS[now.getDay()],
         time: formatTime(now),
-        title: rawTitle || autoTitle,
+        title: rawTitle || text.split(' ').slice(0,4).join(' ').toUpperCase(),
         text: text,
         mood: selectedMood
     };
 
-    entries.unshift(entry);
-    saveEntries(entries);
-
-    // Reset
-    textarea.value = '';
-    textarea.style.height = 'auto';
-    document.getElementById('entry-title').value = '';
-    document.getElementById('word-count-display').textContent = 'WORDS: 0';
-    document.getElementById('char-count-display').textContent = 'CHARS: 0';
-    selectedMood = 'base';
-    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-mood="base"]').classList.add('active');
-
-    showToast('ENTRY COMMITTED');
-    renderArchive();
+    try {
+        const saved = await saveEntry(entry);
+        entries.unshift(saved[0] || entry);
+        textarea.value = '';
+        textarea.style.height = 'auto';
+        document.getElementById('entry-title').value = '';
+        document.getElementById('word-count-display').textContent = 'WORDS: 0';
+        document.getElementById('char-count-display').textContent = 'CHARS: 0';
+        selectedMood = 'base';
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-mood="base"]').classList.add('active');
+        showToast('ENTRY COMMITTED');
+        renderArchive();
+    } catch(e) {
+        showToast('ERROR — TRY AGAIN');
+        console.error(e);
+    }
+    btn.disabled = false;
 }
 
 // ── RENDER ARCHIVE ────────────────────────────────────
@@ -498,7 +544,6 @@ function openDetail(id) {
     const e = entries.find(x => x.id === id);
     if (!e) return;
     currentDetailId = id;
-
     document.getElementById('detail-day').textContent = e.day;
     document.getElementById('detail-month').textContent = e.month;
     document.getElementById('detail-weekday').textContent = e.weekday;
@@ -506,18 +551,21 @@ function openDetail(id) {
     document.getElementById('detail-title').textContent = e.title;
     document.getElementById('detail-text').textContent = e.text;
     document.getElementById('detail-mood').textContent = `STATE: ${e.mood.toUpperCase()}`;
-
     switchView('detail');
 }
 
-document.getElementById('delete-btn').addEventListener('click', () => {
+document.getElementById('delete-btn').addEventListener('click', async () => {
     if (!currentDetailId) return;
     if (!confirm('DELETE THIS ENTRY?')) return;
-    entries = entries.filter(x => x.id !== currentDetailId);
-    saveEntries(entries);
-    renderArchive();
-    showToast('ENTRY DELETED');
-    switchView('archive');
+    try {
+        await deleteEntry(currentDetailId);
+        entries = entries.filter(x => x.id !== currentDetailId);
+        renderArchive();
+        showToast('ENTRY DELETED');
+        switchView('archive');
+    } catch(e) {
+        showToast('ERROR DELETING');
+    }
 });
 
 // ── NAVIGATION ────────────────────────────────────────
@@ -541,8 +589,21 @@ function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── SECRET ENTRY: triple-tap on "LOGBOOK." ────────────
+let tapCount = 0, tapTimer = null;
+document.getElementById('logbook-title-tap').addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => tapCount = 0, 600);
+    if (tapCount >= 3) { tapCount = 0; switchView('compose'); }
+});
+
 // ── INIT ──────────────────────────────────────────────
-renderArchive();
+document.getElementById('entries-list').innerHTML = `<div class="empty-state"><div class="big" style="color:#CCC">LOADING...</div></div>`;
+loadEntries().then(data => {
+    entries = data;
+    renderArchive();
+});
 </script>
 </body>
 </html>
