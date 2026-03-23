@@ -519,7 +519,8 @@ function renderArchive() {
     const list = document.getElementById('entries-list');
     const count = entries.length;
     document.getElementById('archive-count').textContent = `${count} ENTRIES`;
-    document.getElementById('header-count').textContent = `${count} ENTRIES`;
+    const hdr = document.getElementById('header-count');
+    if (hdr) hdr.textContent = `${count} ENTRIES`;
 
     if (count === 0) {
         list.innerHTML = `<div class="empty-state"><div class="big">EMPTY.</div><span class="meta-text" style="color:#CCC">NO ENTRIES YET</span></div>`;
