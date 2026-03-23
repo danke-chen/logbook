@@ -168,6 +168,21 @@
         .btn-primary:active { opacity: 0.75; }
         .btn-primary:disabled { opacity: 0.3; cursor: default; }
 
+        /* ── COVER IMAGE ── */
+        .cover-image {
+            width: 100%;
+            height: 56vw;
+            max-height: 320px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .cover-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
         /* ── ARCHIVE VIEW ── */
         .archive-section { flex-grow: 1; }
         .section-header {
@@ -331,10 +346,9 @@
 
 <!-- VIEW: ARCHIVE (public, read-only) -->
 <div class="view active" id="view-archive">
-    <header>
-        <span class="meta-text">PERSONAL ARCHIVE</span>
-        <span class="meta-text" id="header-count" style="color:#888">0 ENTRIES</span>
-    </header>
+    <div class="cover-image">
+        <img src="https://danke-chen.github.io/logbook/cover1.jpg" alt="cover">
+    </div>
 
     <section class="archive-section">
         <div class="section-header">
