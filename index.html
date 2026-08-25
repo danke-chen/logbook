@@ -247,7 +247,7 @@
         /* ── MUSIC ── */
         .music-card {
             display: none;
-            grid-template-columns: 3.25rem minmax(0, 1fr) 2.75rem;
+            grid-template-columns: 3.25rem minmax(0, 1fr);
             align-items: center;
             gap: 0.9rem;
             margin: 0 0 2rem;
@@ -263,14 +263,7 @@
             background: repeating-radial-gradient(circle, #171717 0 3px, #292929 4px 5px);
             display: grid;
             place-items: center;
-        }
-        .record::after {
-            content: '';
-            width: 0.8rem;
-            height: 0.8rem;
-            border-radius: 50%;
-            background: var(--accent);
-            border: 3px solid #111;
+            position: relative;
         }
         .music-card.playing .record { animation: record-spin 4s linear infinite; }
         @keyframes record-spin { to { transform: rotate(360deg); } }
@@ -287,11 +280,19 @@
         .music-progress::-moz-range-thumb { width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--fg); }
         .music-time { color: #999; min-width: 2.5rem; text-align: right; }
         .music-toggle {
-            width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 1px solid var(--fg);
-            background: transparent; color: var(--fg); cursor: pointer; display: grid; place-items: center;
-            font: 600 0.7rem/1 var(--font-sans);
+            width: 1.65rem; height: 1.65rem; border-radius: 50%; border: 0;
+            background: var(--accent); color: #111; cursor: pointer; display: grid; place-items: center;
+            position: absolute; z-index: 1;
         }
-        .music-toggle:active { background: var(--fg); color: var(--bg); }
+        .music-toggle::before {
+            content: ''; width: 0; height: 0; margin-left: 2px;
+            border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 7px solid currentColor;
+        }
+        .music-card.playing .music-toggle::before {
+            width: 7px; height: 8px; margin-left: 0; border: 0;
+            background: linear-gradient(to right, currentColor 0 2px, transparent 2px 5px, currentColor 5px 7px);
+        }
+        .music-toggle:active { transform: scale(0.92); }
         .detail-mood-tag {
             display: inline-block;
             margin-top: 2rem;
@@ -426,7 +427,9 @@
         </div>
         <div class="detail-title" id="detail-title"></div>
         <div class="music-card" id="music-card">
-            <div class="record" aria-hidden="true"></div>
+            <div class="record">
+                <button class="music-toggle" id="music-toggle" type="button" aria-label="播放《东风志》"></button>
+            </div>
             <div class="music-info">
                 <div class="meta-text music-label">NOW PLAYING</div>
                 <div class="music-title" id="music-title"></div>
@@ -435,7 +438,6 @@
                     <span class="meta-text music-time" id="music-time">0:00</span>
                 </div>
             </div>
-            <button class="music-toggle" id="music-toggle" type="button" aria-label="播放《东风志》">PLAY</button>
             <audio id="music-audio" preload="metadata"></audio>
         </div>
         <div class="detail-text" id="detail-text"></div>
@@ -500,12 +502,12 @@ const PUBLISHED_ENTRIES = [{
     weekday: 'TUESDAY',
     time: '09:03 PM',
     title: '掠夺',
-    text: '两年前挂掉第一通留学中介电话的时候，无数的新名词让我感到一阵眩晕。彼时初出茅庐，也是后来才知道在那群销售的眼里，我不过是一个行走的二十万。那些糖衣炮弹舌灿莲花的背后，其实根本不是对你申请到好学校的殷切期望，只是人头提成、只有落袋为安。或者说其实自离开高中后，就再没有为你好的人了。电话泄露后泄露，看见微信好友中无数的艺术机构和雅思中介，对人本能产生一丝厌恶，因为所有人都是带着掠夺你的恶意而来。也无怪乎我在实习时时常感动时常错愕，因为只有分享，分享给我奶茶、冰棒、或是职场生存指南。这样微妙的事情也会存在在同辈之中。无数次警告自己，不要轻易和盘托出，但仍时常遗忘。初来乍到荷兰，外国同学反倒敞亮得多，也一并治愈了我。我都快要以为自己羽翼已丰了。\n\n近日面了两个远程实习，一种熟悉的感觉又卷土重来。面试官对我的项目不发一问，反倒对工作流程好奇更深；明知我学不到什么，也不愿意放下这个200天的廉价劳动力。当然也不至于上升到什么恶意。只是我觉得，人还是应该往上走走，去大佬中当小菜鸡，其实真的是一件幸运又美好的事。',
+    text: '　　两年前挂掉第一通留学中介电话的时候，无数的新名词让我感到一阵眩晕。彼时初出茅庐，也是后来才知道在那群销售的眼里，我不过是一个行走的二十万。那些糖衣炮弹舌灿莲花的背后，其实根本不是对你申请到好学校的殷切期望，只是人头提成、只有落袋为安。或者说其实自离开高中后，就再没有为你好的人了。\n\n　　电话泄露后，看见微信好友中无数的艺术机构和雅思中介，对人本能产生一丝厌恶，因为所有人都是带着掠夺你的恶意而来。也无怪乎我在实习时时常感动时常错愕，因为只有分享，分享给我奶茶、冰棒、或是职场生存指南。这样微妙的事情也会存在在同辈之中。无数次警告自己，不要轻易和盘托出，但仍时常遗忘。初来乍到荷兰，外国同学反倒敞亮得多，也一并治愈了我。我都快要以为自己羽翼已丰了。\n\n　　近日面了两个远程实习，一种熟悉的感觉又卷土重来。面试官对我的项目不发一问，反倒对工作流程好奇更深；明知我学不到什么，也不愿意放下这个200天的廉价劳动力。当然也不至于上升到什么恶意。只是我觉得，人还是应该往上走走，去大佬中当小菜鸡，其实真的是一件幸运又美好的事。',
     mood: 'base'
 }];
 
 const ENTRY_MUSIC = {
-    '掠夺': { title: '东风志', src: 'assets/dongfengzhi.mp3' }
+    '掠夺': { title: '东风志', src: 'assets/dongfengzhi-v2.mp3' }
 };
 
 const musicCard = document.getElementById('music-card');
@@ -525,7 +527,6 @@ function resetMusic() {
     musicAudio.load();
     musicProgress.value = 0;
     musicTime.textContent = '0:00';
-    musicToggle.textContent = 'PLAY';
     musicToggle.setAttribute('aria-label', '播放歌曲');
     musicCard.classList.remove('visible', 'playing');
 }
@@ -550,13 +551,11 @@ musicToggle.addEventListener('click', async () => {
 
 musicAudio.addEventListener('play', () => {
     musicCard.classList.add('playing');
-    musicToggle.textContent = 'PAUSE';
     musicToggle.setAttribute('aria-label', '暂停歌曲');
 });
 
 musicAudio.addEventListener('pause', () => {
     musicCard.classList.remove('playing');
-    musicToggle.textContent = 'PLAY';
     musicToggle.setAttribute('aria-label', '继续播放歌曲');
 });
 
