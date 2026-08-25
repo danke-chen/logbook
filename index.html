@@ -469,10 +469,11 @@ async function dbFetch(path, options = {}) {
 
 async function loadEntries() {
     try {
-        return await dbFetch('entries?order=id.desc');
+        const remoteEntries = await dbFetch('entries?order=id.desc');
+        return [...PUBLISHED_ENTRIES, ...remoteEntries.filter(e => e.title !== '掠夺')];
     } catch(e) {
         console.warn('load error', e);
-        return [];
+        return PUBLISHED_ENTRIES;
     }
 }
 
@@ -490,6 +491,18 @@ async function deleteEntry(id) {
 // ── STATE ─────────────────────────────────────────────
 let entries = [];
 let currentDetailId = null;
+
+const PUBLISHED_ENTRIES = [{
+    id: -20260825,
+    timestamp: '2026-08-25T21:03:14+02:00',
+    day: '25',
+    month: 'AUGUST',
+    weekday: 'TUESDAY',
+    time: '09:03 PM',
+    title: '掠夺',
+    text: '两年前挂掉第一通留学中介电话的时候，无数的新名词让我感到一阵眩晕。彼时初出茅庐，也是后来才知道在那群销售的眼里，我不过是一个行走的二十万。那些糖衣炮弹舌灿莲花的背后，其实根本不是对你申请到好学校的殷切期望，只是人头提成、只有落袋为安。或者说其实自离开高中后，就再没有为你好的人了。电话泄露后泄露，看见微信好友中无数的艺术机构和雅思中介，对人本能产生一丝厌恶，因为所有人都是带着掠夺你的恶意而来。也无怪乎我在实习时时常感动时常错愕，因为只有分享，分享给我奶茶、冰棒、或是职场生存指南。这样微妙的事情也会存在在同辈之中。无数次警告自己，不要轻易和盘托出，但仍时常遗忘。初来乍到荷兰，外国同学反倒敞亮得多，也一并治愈了我。我都快要以为自己羽翼已丰了。\n\n近日面了两个远程实习，一种熟悉的感觉又卷土重来。面试官对我的项目不发一问，反倒对工作流程好奇更深；明知我学不到什么，也不愿意放下这个200天的廉价劳动力。当然也不至于上升到什么恶意。只是我觉得，人还是应该往上走走，去大佬中当小菜鸡，其实真的是一件幸运又美好的事。',
+    mood: 'base'
+}];
 
 const ENTRY_MUSIC = {
     '掠夺': { title: '东风志', src: 'assets/dongfengzhi.mp3' }
